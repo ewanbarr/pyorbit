@@ -6,7 +6,7 @@ from functools import wraps
 logging.basicConfig(level=logging.DEBUG)
 
 TWOPI = np.pi * 2
-LT_2_M = 299792458.0
+C = 299792458.0
 DAY_2_SEC = 86400.0
 
 def log_args(func):
@@ -103,7 +103,7 @@ def los_velocity(pb, asini, t0, ecc, om, t):
     t = t-t0
     true_anom = true_anomaly_from_orbit(pb,ecc,t)
     angle  = (np.cos( true_anom + om ) + ecc * np.cos(om))
-    return (TWOPI/pb) * asini * angle / np.sqrt( 1-ecc**2 )
+    return -(TWOPI/pb) * asini * angle / np.sqrt( 1-ecc**2 )
     
 @log_args
 def los_velocity_circ(pb, asini, t0, t):
@@ -120,7 +120,7 @@ def los_velocity_circ(pb, asini, t0, t):
     Epoch of measurement [t] can be an array to improve performance.
     """
     # ecc = 0 so Mean == Eccentric == True
-    return (TWOPI/pb) * asini * np.cos(mean_anomaly(pb,t-t0))
+    return -(TWOPI/pb) * asini * np.cos(mean_anomaly(pb,t-t0))
        
 
 @log_args
@@ -142,9 +142,9 @@ def los_acceleration(pb, asini, t0, ecc, om, t):
     t = t-t0
     true_anom = true_anomaly_from_orbit(pb,ecc,t)
     angle = (np.sin(om + true_anom)) * (1 + ecc * np.cos(true_anom) )**2
-    return -(TWOPI/pb)**2 * asini * angle / np.sqrt( 1-ecc**2 )
+    return (TWOPI/pb)**2 * asini * angle / np.sqrt( 1-ecc**2 )
 
-
+@log_args
 def los_acceleration_circ(pb, asini, t0, t):
     """
     Calculate the l.o.s. acceleration for a circular orbit.
@@ -159,5 +159,44 @@ def los_acceleration_circ(pb, asini, t0, t):
     Epoch of measurement [t] can be an array to improve performance.
     """
     # ecc = 0 so Mean == Eccentric == True
-    return (TWOPI/pb)**2 * asini * np.sin(mean_anomaly(pb,t-t0))
+    return -(TWOPI/pb)**2 * asini * np.sin(mean_anomaly(pb,t-t0))
 
+@log_args
+def period(p0,p1,pb,asini,t0,ecc,om,t,pepoch):
+    """
+    Calculate apparent pulse period, given los velocity.
+    
+    Inputs:
+    p0 - pulsar spin period (s)
+    p1 - pulsar period derivative (s/s)
+    pb - orbital period (s)
+    asini - projected semi-major axis (m)
+    t0 - epoch of periapsis (s)
+    ecc - eccentricity 
+    om - longitude of periastron (rad)
+    t - measurement epoch (s)
+    pepoch - epoch of period measurement (s)
+    """
+    p_actual = p0 + p1*(t-pepoch)
+    velocity = los_velocity(pb, asini, t0, ecc, om, t)
+    p_apparent = (C / (C+velocity)) * p_actual
+    return p_apparent
+
+def period_circ(p0,p1,pb,asini,t0,t,pepoch):
+    """
+    Calculate apparent pulse period, given los velocity.
+
+    Inputs:
+    p0 - pulsar spin period (s)
+    p1 - pulsar period derivative (s/s)
+    pb - orbital period (s)
+    asini - projected semi-major axis (m)
+    t0 - epoch of periapsis (s)
+    t - measurement epoch (s)
+    pepoch - epoch of period measurement (s)
+    """
+    p_actual = p0 + p1*(t-pepoch)
+    velocity = los_velocity_circ(pb, asini, t0, t)
+    p_apparent = (C / (C+velocity)) * p_actual
+    return p_apparent
+    
