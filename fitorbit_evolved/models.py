@@ -1,24 +1,26 @@
 import numpy as np
 import utils
 
-class Parameter(np.float64):
-    def __init__(self,value,fit):
-        self.name = name
-        self.fit
+class IsolatedPulsar(object):
+    def __init__(self,p0,p1,pepoch):
+        self.p0 = p0
+        self.p1 = p1
+        self.pepoch = pepoch
         
+    def period(self,epoch):
+        return self.p0 + self.p1 * (epoch - self.pepoch)
+    
+    def evaluate(self,epochs):
+        return self.period(np.array(epochs))
 
-class OrbitalModel(object):
-    def __init__(self,pb,asini,t0,ecc=0.,om=0.):
+class BinaryPulsar(IsolatedPulsar):
+    def __init__(self,p0,p1,pepoch,pb,asini,t0,ecc,om):
+        super(BinaryPulsar,self).__init__(p0,p1,pepoch)
         self.pb = pb
         self.asini = asini
         self.t0 = t0
         self.ecc = ecc
         self.om = om
-
-    def __getattr__(self,name):
-        assert hasattr(self,name), "attribute '%s' not found"%(name)
-        attr = super(OrbitalModel,self).__getattr__(name)
-        if isinstance(attr,Parameter)
 
     def velocity(self,epoch):
         return utils.los_velocity(self.pb,self.asini,self.t0,self.ecc,self.om,epoch)
@@ -26,27 +28,16 @@ class OrbitalModel(object):
     def acceleration(self,epoch):
         return utils.los_acceleration(self.pb,self.asini,self.t0,self.ecc,self.om,epoch)
 
-    def evaluate(self,epochs):
-        vel = np.array([self.velocity(epoch) for epoch in epochs])
-        acc = np.array([self.acceleration(epoch) for epoch in epochs])
-        return vel,acc
-    
-class SpinModel(object):
-    def __init__(self,p0,p1,pepoch):
-        self.p0 = p0
-        self.p1 = p1
-        self.pepoch = pepoch
-        
-    def period(self,epoch,orbital_model=None):
-        p = self.p0 + self.p1 * (epoch - self.pepoch)
-        if orbital_model is not None:
-            vlos = orbital_model.velocity(epoch)
-            p = (utils.C / (utils.C + vlos)) * p
-        return p
-        
-    def evaluate(self,epochs,orbital_model=None):
-        periods = np.array([self.period(epoch,orbital_model) for epoch in epochs])
-        return periods
+    def period(self,epoch):
+        return super(BinaryPulsar,self).period(epoch) * self.doppler_factor(epoch)
+
+    def evalulate(self,epochs):
+        return np.array([self.period(epoch) for epoch in epochs])
+
+    def doppler_factor(self,epoch):
+        vlos = self.velocity(epoch)
+        return utils.C / (utils.C + vlos)
+
     
     
         

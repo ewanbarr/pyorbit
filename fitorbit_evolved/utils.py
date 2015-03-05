@@ -59,10 +59,8 @@ def true_anomaly(E,ecc):
     E   - eccentric anomaly
     ecc - eccentricity
     """
-    if E > np.pi:
-        return np.arccos((np.cos(E) - ecc) / (1-ecc*np.cos(E)))
-    else:
-        return -np.arccos((np.cos(E) - ecc) / (1-ecc*np.cos(E)))
+    return 2*np.arctan2(np.sqrt(1+ecc)*np.sin(E/2.),
+                        np.sqrt(1-ecc)*np.cos(E/2.))
 
 @log_args
 def true_anomaly_from_orbit(pb,ecc,t):
