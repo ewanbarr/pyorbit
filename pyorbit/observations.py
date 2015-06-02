@@ -38,7 +38,7 @@ class Observation(object):
         return "(%s)"%(",".join([repr(i) for i in args]))
 
 
-def from_per_file(fname):
+def read_per_file(fname):
     """
     Read observation data from a pdmp.per file.
     

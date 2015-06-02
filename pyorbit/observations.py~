@@ -1,5 +1,5 @@
 import numpy as np
-import utils
+from pyorbit import utils
 
 PER_FILE_DTYPE = [("t","float64"),
                   ("p0","float64"),
