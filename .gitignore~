@@ -13,7 +13,10 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+<<<<<<< HEAD
+=======
 .eggs/
+>>>>>>> ddda28338185f73aae99b4e469e503fa8c30c665
 lib/
 lib64/
 parts/
@@ -41,12 +44,13 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+=======
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *,cover
-
+>>>>>>> ddda28338185f73aae99b4e469e503fa8c30c665
 
 # Translations
 *.mo
