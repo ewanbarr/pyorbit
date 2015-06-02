@@ -1,0 +1,45 @@
+import numpy as np
+from pyorbit import utils
+
+class IsolatedPulsar(object):
+    def __init__(self,p0,p1,pepoch):
+        self.p0 = p0 
+        self.p1 = p1
+        self.pepoch = pepoch * utils.DAY_2_SEC
+        
+    def period(self,epoch):
+        return self.p0 + self.p1 * (epoch - self.pepoch)
+    
+    def evaluate(self,epochs):
+        return self.period(np.array(epochs))
+
+class BinaryPulsar(IsolatedPulsar):
+    def __init__(self,p0,p1,pepoch,pb,asini,t0,ecc,om):
+        super(BinaryPulsar,self).__init__(p0,p1,pepoch)
+        self.pb = pb * utils.DAY_2_SEC
+        self.asini = asini * utils.C
+        self.t0 = t0 * utils.DAY_2_SEC
+        self.ecc = ecc
+        self.om = om
+
+    def velocity(self,epoch):
+        #return utils.los_velocity(self.pb,self.asini,self.t0,self.ecc,self.om,epoch)
+        return utils.los_velocity_circ(self.pb,self.asini,self.t0,epoch)
+
+
+    def acceleration(self,epoch):
+        return utils.los_acceleration(self.pb,self.asini,self.t0,self.ecc,self.om,epoch)
+
+    def period(self,epoch):
+        return super(BinaryPulsar,self).period(epoch) * self.doppler_factor(epoch)
+
+    def evaluate(self,epochs):
+        return np.array([self.period(epoch) for epoch in epochs])
+
+    def doppler_factor(self,epoch):
+        vlos = self.velocity(epoch)
+        return utils.C / (utils.C + vlos)
+
+    
+    
+        
