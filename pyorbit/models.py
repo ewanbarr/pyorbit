@@ -1,26 +1,13 @@
 import numpy as np
 from pyorbit import utils
 
-class IsolatedPulsar(object):
-    def __init__(self,p0,p1,pepoch):
-        self.p0 = p0 
-        self.p1 = p1
-        self.pepoch = pepoch * utils.DAY_2_SEC
-        
-    def period(self,epoch):
-        return self.p0 + self.p1 * (epoch - self.pepoch)
-    
-    def evaluate(self,epochs):
-        return self.period(np.array(epochs))
-
-class BinaryPulsar(IsolatedPulsar):
-    def __init__(self,p0,p1,pepoch,pb,asini,t0,ecc,om):
-        super(BinaryPulsar,self).__init__(p0,p1,pepoch)
+class KeplerianOrbit(object):
+    def __init__(self,pb,asini,t0,ecc,om):
         self.pb = pb * utils.DAY_2_SEC
         self.asini = asini * utils.C
         self.t0 = t0 * utils.DAY_2_SEC
         self.ecc = ecc
-        self.om = om
+        self.om = np.pi*om/180.0
 
     def velocity(self,epoch):
         if self.ecc < 0.000001:
@@ -33,16 +20,48 @@ class BinaryPulsar(IsolatedPulsar):
             return utils.los_acceleration_circ(self.pb,self.asini,self.t0,epoch)
         else:
             return utils.los_acceleration(self.pb,self.asini,self.t0,self.ecc,self.om,epoch)
+        
+    def __repr__(self):
+        out = [
+            "pb".ljust(10)+"%e days"%(self.pb/utils.DAY_2_SEC),
+            "asini".ljust(10)+"%e lt-s"%(self.asini/utils.C),
+            "t0".ljust(10)+"%e MJD"%(self.t0/utils.DAY_2_SEC),
+            "ecc".ljust(10)+"%e"%(self.ecc),
+            "om".ljust(10)+"%e degrees"%(180.0*self.om/np.pi)
+            ]
+        return "\n".join(out)
 
+class Pulsar(object):
+    def __init__(self,p0,p1,pepoch,ra,dec):
+        self.p0 = p0 
+        self.p1 = p1
+        self.pepoch = pepoch * utils.DAY_2_SEC
+        self.orbits = []
+        
     def period(self,epoch):
-        return super(BinaryPulsar,self).period(epoch) * self.doppler_factor(epoch)
-
+        p = self.p0 + self.p1 * (epoch - self.pepoch)
+        return p * self._doppler_factor(epoch)
+    
     def evaluate(self,epochs):
         return np.array([self.period(epoch) for epoch in epochs])
-
-    def doppler_factor(self,epoch):
-        vlos = self.velocity(epoch)
-        return utils.C / (utils.C + vlos)
+    
+    def _doppler_factor(self,epoch):
+        if self.orbits:       
+            vlos = sum([orbit.velocity(epoch) for orbit in self.orbits])
+            return utils.C / (utils.C + vlos)
+        else:
+            return 1.0
+        
+    def __repr__(self):
+        out = [
+            "p0".ljust(10)+"%f seconds"%(self.p0),
+            "p1".ljust(10)+"%f s/s"%(self.p1),
+            "pepoch".ljust(10)+"%f"%(self.pepoch/utils.DAY_2_SEC)
+            ]
+        for ii,orbit in enumerate(self.orbits):
+            out.append("\nOrbit %d:"%ii)
+            out.append(repr(orbit))
+        return "\n".join(out)
 
 
 def read_par_file(fname):
@@ -72,6 +91,7 @@ def read_par_file(fname):
         p1 = 0.0
 
     pepoch = float(par.get("PEPOCH",0.0))
+    pulsar = Pulsar(p0,p1,pepoch)
         
     if "BINARY" in par:
         pb = float(par.get("PB",0.0))
@@ -79,9 +99,8 @@ def read_par_file(fname):
         t0 = float(par.get("T0",0.0))
         om = float(par.get("OM",0.0))
         ecc = float(par.get("ECC",0.0))
-        return BinaryPulsar(p0,p1,pepoch,pb,asini,t0,ecc,om)
-    else:
-        return IsolatedPulsar(p0,p1,pepoch)
+        pulsar.orbits.append(KeplerianOrbit(pb,asini,t0,ecc,om))
+    return pulsar
         
 def write_par_file(fname,model):
     f = open(fname,"w+")
