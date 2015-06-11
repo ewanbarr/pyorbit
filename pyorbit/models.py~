@@ -1,4 +1,5 @@
 import numpy as np
+import ephem as eph
 from pyorbit import utils
 
 class KeplerianOrbit(object):
@@ -31,13 +32,22 @@ class KeplerianOrbit(object):
             ]
         return "\n".join(out)
 
+
 class Pulsar(object):
-    def __init__(self,p0,p1,pepoch):
+    def __init__(self,ra,dec,p0,p1,pepoch):
         self.p0 = p0 
         self.p1 = p1
         self.pepoch = pepoch * utils.DAY_2_SEC
+        self.ra_offset = 0.0
+        self.dec_offset = 0.0
+        eq = eph.Equatorial(ra,dec)
+        self._ra = eq.ra
+        self._dec = eq.dec
+        ecl = eph.Ecliptic(eq)
+        self._lat = ecl.lat
+        self._lon = ecl.lon
         self.orbits = []
-        
+
     def period(self,epoch):
         p = self.p0 + self.p1 * (epoch - self.pepoch)
         return p * self._doppler_factor(epoch)
@@ -45,15 +55,30 @@ class Pulsar(object):
     def evaluate(self,epochs):
         return np.array([self.period(epoch) for epoch in epochs])
     
-    def _doppler_factor(self,epoch):
-        if self.orbits:       
-            vlos = sum([orbit.velocity(epoch) for orbit in self.orbits])
-            return utils.C / (utils.C + vlos)
-        else:
-            return 1.0
+    def get_ra_dec(self):
+        ra = self._ra + self.ra_offset
+        dec = self._dec + self.dec_offset
+        return ra,dec
+
+    def roemer_velocity(self,epoch):
+        ecl = eph.Ecliptic(eph.Equatorial(*self.get_ra_dec()))
+        dlat = ecl.lat - self._lat
+        dlon = ecl.lon - self._lon
+        return utils.los_roemer_velocity(self._lon,dlon,self._lat,dlat,epoch)
         
+    def _doppler_factor(self,epoch):
+        vlos = self.roemer_velocity(epoch)
+        if self.orbits:       
+            vlos += sum([orbit.velocity(epoch) for orbit in self.orbits])
+        return utils.C / (utils.C + vlos)
+                
     def __repr__(self):
+        pos = eph.Equatorial(*self.get_ra_dec())
+        print pos.ra
+        print pos.dec
         out = [
+            "ra".ljust(10)+"%s"%(pos.ra),
+            "dec".ljust(10)+"%s"%(pos.dec),
             "p0".ljust(10)+"%f seconds"%(self.p0),
             "p1".ljust(10)+"%f s/s"%(self.p1),
             "pepoch".ljust(10)+"%f"%(self.pepoch/utils.DAY_2_SEC)
@@ -75,6 +100,8 @@ def read_par_file(fname):
         val = line[1]
         par[key] = val
     
+    ra = par["RAJ"]
+    dec = par["DECJ"]
     if "P0" in par:
         p0 = float(par["P0"])
     elif "F0" in par:
@@ -91,7 +118,7 @@ def read_par_file(fname):
         p1 = 0.0
 
     pepoch = float(par.get("PEPOCH",0.0))
-    pulsar = Pulsar(p0,p1,pepoch)
+    pulsar = Pulsar(ra,dec,p0,p1,pepoch)
         
     if "BINARY" in par:
         pb = float(par.get("PB",0.0))

@@ -2,10 +2,13 @@ import numpy as np
 import copy
 from scipy.optimize import minimize,leastsq
 from collections import OrderedDict
+import warnings
 
 class FittingParameters(object):
     def __init__(self,model):
         self.spin = OrderedDict()
+        self.spin["ra_offset"] = False
+        self.spin["dec_offset"] = False
         self.spin["p0"] = False
         self.spin["p1"] = False
         self.spin["pepoch"] = False
@@ -62,8 +65,6 @@ class Fitter(object):
         
     def _func(self,values):
         self.params.set_values(self.model,values)
-        print "Func called"
-        print self.model
         if self.use_weightings:
             return self.residuals()/self.pdata["perr"]
         else:
@@ -85,7 +86,8 @@ class Fitter(object):
         init_values = self.params.get_values(self.model)
         new_values,success = leastsq(self._func,init_values,**kwargs)
         self.params.set_values(self.model,new_values)
-        
+        if not success:
+            warnings.warn("Fit unsuccessful.")
         
     
     

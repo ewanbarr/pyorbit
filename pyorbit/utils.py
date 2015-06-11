@@ -1,11 +1,16 @@
 import numpy as np
 import logging
+import ephem as eph
 from scipy.optimize import minimize
 from functools import wraps
 
 TWOPI = np.pi * 2
 C = 299792458.0
 DAY_2_SEC = 86400.0
+YEAR_2_SEC = 365.242 * DAY_2_SEC
+MJD_TO_DJD = -15019.5
+EARTH_TO_SSB_DIST = C * 505.1651845705100455
+EARTH_ANGULAR_VELOCITY = TWOPI / YEAR_2_SEC
 
 def log_args(func):
     @wraps(func)
@@ -196,16 +201,35 @@ def period_circ(p0,p1,pb,asini,t0,t,pepoch):
     velocity = los_velocity_circ(pb, asini, t0, t)
     p_apparent = (C / (C+velocity)) * p_actual
     return p_apparent
-    
 
-def los_roemer_velocity(l,dl,b,db,epoch,previous_vernal_equinox):
-    R0 = 505.1651845705100455
-    year = 365.242 * 86400.0
-    time_since_equinox = epoch-vernal_equinox
-    phase = np.pi*2*(time_since_equinox%year)
+def mjd_to_djd(mjd):
+    return mjd - 15019.5
+
+def djd_to_mjd(djd):
+    return djd + 15019.5
+    
+def los_roemer_velocity(l,dl,b,db,epoch):
+    """
+    Calculate the l.o.s. Roemer velocity caused by a position offset.
+
+    Inputs:
+    l - ecliptic longitude (rad)
+    dl - offset in ecliptic longitude (rad)
+    b - ecliptic latitude (rad)
+    db - offset in ecliptic latitude (rad)
+    epoch - epoch of measurement (s)
+    """
+    # calculate epoch of last equinox
+    djd = mjd_to_djd(epoch/DAY_2_SEC)
+    equinox = djd_to_mjd(eph.previous_vernal_equinox(djd))*DAY_2_SEC
+
+    # calculate phase of earth orbit
+    phase = TWOPI * (epoch - equinox)/YEAR_2_SEC
+    
+    # get velocity due to offset
     a = np.cos(b) * np.sin(phase+l) 
     b = np.cos(b+db) * np.sin(phase+l+dl)
-    vel = -C*R0*(b - a)
+    vel = -1 * EARTH_TO_SSB_DIST * EARTH_ANGULAR_VELOCITY * (b - a)
     return vel
 
 

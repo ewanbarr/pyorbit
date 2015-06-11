@@ -7,6 +7,8 @@ import warnings
 class FittingParameters(object):
     def __init__(self,model):
         self.spin = OrderedDict()
+        self.spin["ra_offset"] = False
+        self.spin["dec_offset"] = False
         self.spin["p0"] = False
         self.spin["p1"] = False
         self.spin["pepoch"] = False
@@ -60,13 +62,12 @@ class Fitter(object):
         self.fits = []
         self.params = FittingParameters(model)
         self.use_weightings = True
-        
+        self.efac = 1.0
+
     def _func(self,values):
         self.params.set_values(self.model,values)
-        print "Func called"
-        print self.model
         if self.use_weightings:
-            return self.residuals()/self.pdata["perr"]
+            return self.residuals()/(self.pdata["perr"]*self.efac)
         else:
             return self.residuals()
 
@@ -76,7 +77,10 @@ class Fitter(object):
 
     def fitness(self):
         resid = self.residuals()
-        return sum((resid/self.pdata['perr'])**2)
+        return sum((resid/(self.pdata['perr']*self.efac))**2)
+
+    def redchi2(self):
+        return self.fitness()/self.pdata.size
     
     def revert(self):
         self.model = self.fits.pop(-1)
