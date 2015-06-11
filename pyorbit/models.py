@@ -45,6 +45,7 @@ class Pulsar(object):
     def evaluate(self,epochs):
         return np.array([self.period(epoch) for epoch in epochs])
     
+       
     def _doppler_factor(self,epoch):
         if self.orbits:       
             vlos = sum([orbit.velocity(epoch) for orbit in self.orbits])

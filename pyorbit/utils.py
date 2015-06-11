@@ -197,3 +197,16 @@ def period_circ(p0,p1,pb,asini,t0,t,pepoch):
     p_apparent = (C / (C+velocity)) * p_actual
     return p_apparent
     
+
+def los_roemer_velocity(l,dl,b,db,epoch,previous_vernal_equinox):
+    R0 = 505.1651845705100455
+    year = 365.242 * 86400.0
+    time_since_equinox = epoch-vernal_equinox
+    phase = np.pi*2*(time_since_equinox%year)
+    a = np.cos(b) * np.sin(phase+l) 
+    b = np.cos(b+db) * np.sin(phase+l+dl)
+    vel = -C*R0*(b - a)
+    return vel
+
+
+    
