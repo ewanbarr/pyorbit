@@ -1,0 +1,16 @@
+import numpy as np
+
+def roughness(x,pb,s=1):
+    x = np.copy(x)
+    x["t"]%=pb
+    x = np.sort(x,order="t")
+    a = np.diff(x["p0"])**2
+    b = np.diff(x["t"])**2
+    e = x["perr"][:-1]*x["perr"][1:]
+    return sum(a/(s**2+b))
+
+def simple_roughness(x,pb):
+    x = np.copy(x)
+    x["t"]%=pb
+    x = np.sort(x,order="t")
+    return sum(np.diff(x["p0"])**2)
